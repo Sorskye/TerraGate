@@ -29,13 +29,15 @@ public class app {
     public static volatile boolean SocketStatus = true;
     public static volatile boolean DisplayIncoming = false;
 
+    private static Scanner StartupScanner = null;
     private static void shutdown(){
+        StartupScanner.close();
         System.out.println("Shutdown hook is closing sockets.. ");
         listenTCP.StopTCPServer();
         listenUDP.stopUDPServer();
         SocketStatus = false;
 
-        System.out.println("Waiting for TCP & UDP servers shutdown.. ");
+        System.out.println("Waiting for servers to shutdown..");
         int i = 0;
         while(listenTCP.TCPrunning == true || listenUDP.UDPrunning == true){
             try{
@@ -66,7 +68,7 @@ public class app {
         int RequiredThreads = 6;
         long JVMTotalMemory = runtime.totalMemory();
 
-        Scanner StartupScanner = new Scanner(System.in);
+        StartupScanner = new Scanner(System.in);
         System.out.println("Threads to use? (min: "+(RequiredThreads)+" max:"+avail_proc+") (0 for max) >");
         int thread_input = StartupScanner.nextInt();
         if(thread_input != 0){
@@ -118,19 +120,24 @@ public class app {
         String TLSver = "TLSv1.3";
 
         new Thread(()-> listenTCP.startTCPServer(Port_TCP, TLSver, TCPHandlerPool, AnalyzeThreadPool)).start();
-        new Thread(()-> listenUDP.startUDPServer(Port_UDP)).start();
+        
 
         for (int i = 0; i < parserThreads; i++){
             AnalyzeThreadPool.submit(() -> analyse.AnalyseLoop());
             System.out.println("Packet Analyser Thread: "+i+" -> running :");
         }
 
-        System.out.println("Waiting for TCP and UDP servers to start..");
-        while (listenTCP.TCPrunning == false || listenUDP.UDPrunning == false) {
+        System.out.println("Waiting for TCP server to start..");
+        int i = 0;
+        while (listenTCP.TCPrunning == false) {
             try{
                 Thread.sleep(500);
+                if(i>5){ System.out.println("TCP server did not start.."); break;}
+                i++;
             }catch (Exception e){System.out.println("[APP] Error: "+e);}
         }
+
+        System.out.println("[!!!] the UDP server is unencrypted, and not enabled by default. To enable, use the command interface..");
        
 
         // START CLI
@@ -140,19 +147,23 @@ public class app {
             String cliInput = StartupScanner.nextLine();
             switch (cliInput) {
                 case "exit":
+                    
                     System.exit(0);
                     break;
                 case "help":
+                    System.out.println("");
                     System.out.println("===== available commands =====");
                     System.out.println("exit            -quits the program");
                     System.out.println("help            -show a list of available commands");
                     System.out.println("show incoming   -display incoming packets");
                     System.out.println("hide incoming   -hide incoming packets");
+                    System.out.println("start UDP       -[!] start the unencrypted UDP server");
+                    System.out.println("stop UDP        -stop the unencrypted UDP server");
                     System.out.println("status          -shows the status of the program");
                     System.out.println("");
                     break;
                 case "status":
-
+                    System.out.println("");
                     System.out.println("===== status =====");
                     System.out.println("Total memory in use: "+runtime.totalMemory() / (1024 * 1024)+" MB");
                     System.out.println("Packets analyzed since startup: "+listenTCP.TCPConnectionsMade);
@@ -165,7 +176,13 @@ public class app {
                 case "hide incoming":
                     DisplayIncoming = false;
                     break;
-            
+                case "start UDP":
+                    new Thread(()-> listenUDP.startUDPServer(Port_UDP)).start();
+                    break;
+                case "stop UDP":
+                    boolean success = listenUDP.stopUDPServer();
+                    if(success){System.out.println("[APP] UDP server stopped..");break;}
+                    System.out.println("[APP] UDP server did not close!");
                 default:
                    
                     break;

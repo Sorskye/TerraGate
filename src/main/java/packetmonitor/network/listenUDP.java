@@ -15,18 +15,22 @@ public class listenUDP {
     private static DatagramSocket UDPSocket = null;
     
     public static boolean stopUDPServer(){
-        try{
-            UDPSocket.close();
-            UDPrunning = false;
-        }catch (Exception e){
-            System.out.println("[UDP SERVER] An error occurred while stopping UDP server.. "+e);
-        }
+        if(UDPrunning == false){return true;}
+            try{
+                UDPSocket.close();
+                
+            }catch (Exception e){
+                System.out.println("[UDP SERVER] An error occurred while stopping UDP server.. "+e);
+            }
+        UDPrunning = false;
         return true;
+    
     }
 
     public static void startUDPServer(int Port_UDP){
         try{
             UDPSocket = new DatagramSocket(Port_UDP);
+            System.out.println("");
             System.out.println("[UDP SERVER] UDP (NON ENCRYPTED) listening on port "+Port_UDP+"..");
             UDPrunning = true;
             byte[] buffer = new byte[1024];
@@ -47,7 +51,7 @@ public class listenUDP {
                 }
             }
         }catch (IOException e){
-            System.out.println("UDP socket setup failed. Is the port already in use?");
+            
         }
     }
 }

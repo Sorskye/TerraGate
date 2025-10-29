@@ -26,14 +26,16 @@ public class listenTCP {
     private static SSLServerSocket ServerSocket = null;
 
     public static boolean StopTCPServer(){
+        if(TCPrunning == false){return true;}
         try{
             ServerSocket.close();
-            TCPrunning = false;
+            
         }catch (Exception e){
             System.out.println("[TCP SERVER] An error occurred when closing the TCP server.. "+e);
             return false;
         }
         
+        TCPrunning = false;
         return true;
     }
    
@@ -52,12 +54,15 @@ public class listenTCP {
             SSLServerSocketFactory ssf = sslContext.getServerSocketFactory();
             ServerSocket = (SSLServerSocket) ssf.createServerSocket(Port_TCP);
             ServerSocket.setNeedClientAuth(false);
+
+            System.out.println("");
+            System.out.println("[TCP SERVER] TCP listening on port: "+Port_TCP+" TLS version: "+TLSver);
+            TCPrunning = true;
         }catch (Exception e){
-            System.out.println("[TLS INIT] TLS init failed for TCP server.. "+e);
+             System.out.println("[TLS INIT] TLS init failed for TCP server.. "+e);
+            
         }
-        
-        System.out.println("[TCP SERVER] TCP listening on port: "+Port_TCP+" TLS version: "+TLSver);
-        TCPrunning = true;
+       
 
         while (app.SocketStatus == true) {
             try{
