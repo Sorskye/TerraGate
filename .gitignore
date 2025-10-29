@@ -1,0 +1,32 @@
+# Java compiled files
+*.class
+
+# Package files
+*.jar
+*.war
+*.ear
+
+# TLS certificates
+*.pem
+*.srl
+*.jks
+*.pem
+*.p12
+*.csr
+
+# IDE files
+*.iml
+.idea/
+.vscode/
+*.classpath
+*.project
+*.settings/
+
+# Build directories
+bin/
+build/
+out/
+target/
+
+#
+
