@@ -43,7 +43,7 @@ public class listenTCP {
         
         try{
             KeyStore keystore = KeyStore.getInstance("JKS");
-            keystore.load(new FileInputStream("/home/admin/Documents/PacketMonitor/packetmonitor/src/main/java/packetmonitor/network/certificates/server_keystore.jks"), "changeit".toCharArray());
+            keystore.load(new FileInputStream(app.CertifacteFilePath), "changeit".toCharArray());
 
             KeyManagerFactory keymanagerfactory = KeyManagerFactory.getInstance("Sunx509");
             keymanagerfactory.init(keystore, "changeit".toCharArray());
@@ -70,7 +70,7 @@ public class listenTCP {
                 TCPConnectionsMade++;
                 TCPHandlerPool.submit(()-> handleTCPclient(socket, AnalyzeThreadPool));
             }catch (IOException e){
-                System.out.println("[TCP SERVER] An error occurred while setting up TLS socket.. "+e);
+               // System.out.println("[TCP SERVER] An error occurred while setting up TLS socket.. "+e);
             }
             
         }

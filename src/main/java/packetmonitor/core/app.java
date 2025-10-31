@@ -4,8 +4,9 @@ import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-
-
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.Scanner;
 
 import packetmonitor.network.listenTCP;
@@ -16,18 +17,26 @@ import packetmonitor.analysis.*;
 
 
 
+
 public class app {
     public static int Port_UDP = 5005;
     public static final int DefaultPort_UDP = 5005;
     public static int Port_TCP = 5004;
     public static final int DefaultPort_TCP = 5004;
 
-    private static final int MaxQueueSize = 500;
+    public static volatile String DestinationServerAddress = "0.0.0.0";
+    public static volatile String CertifacteFilePath = "server_keystore.jks";
+
+    private static volatile int MaxQueueSize = 500;
+    public static volatile List<Map<String, String>> ConnectionEntries = null;
+    public static volatile List<Map<String, String>> ConfigEntries = null;
     public static final BlockingQueue<Packet> HandlerQueue = new ArrayBlockingQueue<>(MaxQueueSize);
     public static final BlockingQueue<Packet> AnalyseQueue = new ArrayBlockingQueue<>(MaxQueueSize);
     public static final BlockingQueue<Packet> OutputQueue = new ArrayBlockingQueue<>(MaxQueueSize);
     public static volatile boolean SocketStatus = true;
     public static volatile boolean DisplayIncoming = false;
+
+    
 
     private static Scanner StartupScanner = null;
     private static void shutdown(){
@@ -52,6 +61,18 @@ public class app {
 
     public static void main(String[] args) {
         Runtime runtime = Runtime.getRuntime();
+
+        try{
+            ConfigEntries = jsonUtil.load_config();
+            for (Map<String, String> entry : ConfigEntries) {
+                DestinationServerAddress = entry.get("destination-server");
+                MaxQueueSize = Integer.parseInt(entry.get("MaxQueue"));
+                CertifacteFilePath = entry.get("Cert-FilePath");
+            }
+        }catch(Exception e){
+            System.out.println("[APP] warning: config did not load: "+e);
+            System.exit(0);
+        }
 
         System.out.println("\n");
         System.out.println("TerraGate V 0.0.1");
@@ -119,6 +140,14 @@ public class app {
         System.out.println("Executor Initialized, "+parserThreads+" Analysing threads available");
         String TLSver = "TLSv1.3";
 
+        try{
+            ConnectionEntries = jsonUtil.load_whitelist();
+        }catch(Exception e){
+            System.out.println("[APP] warning: whitelist did not load: "+e);
+        }
+
+
+
         new Thread(()-> listenTCP.startTCPServer(Port_TCP, TLSver, TCPHandlerPool, AnalyzeThreadPool)).start();
         
 
@@ -138,7 +167,7 @@ public class app {
         }
 
         System.out.println("[!!!] the UDP server is unencrypted, and not enabled by default. To enable, use the command interface..");
-       
+        
 
         // START CLI
         StartupScanner.nextLine();
@@ -153,13 +182,18 @@ public class app {
                 case "help":
                     System.out.println("");
                     System.out.println("===== available commands =====");
-                    System.out.println("exit            -quits the program");
-                    System.out.println("help            -show a list of available commands");
-                    System.out.println("show incoming   -display incoming packets");
-                    System.out.println("hide incoming   -hide incoming packets");
-                    System.out.println("start UDP       -[!] start the unencrypted UDP server");
-                    System.out.println("stop UDP        -stop the unencrypted UDP server");
-                    System.out.println("status          -shows the status of the program");
+                    System.out.println("exit                -quits the program");
+                    System.out.println("help                -show a list of available commands");
+                    System.out.println("status              -shows the status of the program");
+                    System.out.println("show incoming       -display incoming packets");
+                    System.out.println("hide incoming       -hide incoming packets");
+                    System.out.println("start UDP           -[!] start the unencrypted UDP server");
+                    System.out.println("stop UDP            -stop the unencrypted UDP server");
+                    System.out.println("whitelist display   -display a list of whitelisted clients");
+                    System.out.println("whitelist add       -add a new client to the whitelist");
+                    System.out.println("whitelist remove    -remove a client from the whitelist");
+                    System.out.println("whitelist reload    -reload the whitelist file");
+                    
                     System.out.println("");
                     break;
                 case "status":
@@ -183,6 +217,35 @@ public class app {
                     boolean success = listenUDP.stopUDPServer();
                     if(success){System.out.println("[APP] UDP server stopped..");break;}
                     System.out.println("[APP] UDP server did not close!");
+                case "whitelist add":
+                    System.out.println("Enter local host address >");
+                    
+                    String host_address_string = StartupScanner.nextLine();
+                    System.out.println("ip: "+host_address_string);
+                    System.out.println("Enter client id >");
+                    int client_id = StartupScanner.nextInt();
+
+                    System.out.println("client id: "+client_id+" with address: "+host_address_string+". correct? (y,n) >");
+                    
+                    String confirm_input = StartupScanner.next();
+                    if (confirm_input.equalsIgnoreCase("y")){
+                        List<Map<String, String>> entries = jsonUtil.load_whitelist();
+                        Map<String, String> newEntry = new HashMap<>();
+                        newEntry.put("id", Integer.toString(client_id));
+                        newEntry.put("source", host_address_string);
+                        entries.add(newEntry);
+                        jsonUtil.save_whitelist(entries);
+                    }
+                    break;
+                case "whitelist display":
+                    System.out.println("");
+                    System.out.println("===== whitelist entries =====");
+                    for (Map<String, String> entry : ConnectionEntries) {
+                        System.out.println("id: " + entry.get("id") + " | source: " + entry.get("source"));
+                    }
+                    System.out.println("");
+                case "whitelist reload":
+                    ConnectionEntries = jsonUtil.load_whitelist();
                 default:
                    
                     break;
